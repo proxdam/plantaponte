@@ -1,0 +1,119 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_pdf import PdfPages
+
+planta_ponte = None
+canvas = None
+
+def gerar_planta_ponte(comprimento_ponte, largura_ponte, largura_pista, largura_calcada):
+    global planta_ponte
+    # Dimensões derivadas
+    largura_total = largura_pista + 2 * largura_calcada
+
+    # Verificar se as dimensões são válidas
+    if largura_total > largura_ponte:
+        messagebox.showerror("Erro", "A largura total (pista + calçadas) excede a largura da ponte.")
+        return None
+
+    # Coordenadas para as bordas da pista
+    x_pista = [0, comprimento_ponte, comprimento_ponte, 0, 0]
+    y_pista = [
+        largura_calcada, largura_calcada, largura_total - largura_calcada, largura_total - largura_calcada, largura_calcada
+    ]
+
+    # Coordenadas para as bordas da ponte
+    x_ponte = [0, comprimento_ponte, comprimento_ponte, 0, 0]
+    y_ponte = [0, 0, largura_ponte, largura_ponte, 0]
+
+    # Criar a figura
+    fig, ax = plt.subplots()
+
+    # Plotar a ponte
+    ax.plot(x_ponte, y_ponte, label='Borda da Ponte', color='brown')
+
+    # Plotar a pista
+    ax.plot(x_pista, y_pista, label='Pista de Rolamento', color='grey')
+
+    # Adicionar calçadas
+    ax.fill_between(x_pista, 0, largura_calcada, color='lightgrey', label='Calçada')
+    ax.fill_between(x_pista, largura_total - largura_calcada, largura_total, color='lightgrey')
+
+    # Configurações adicionais do gráfico
+    ax.set_xlabel('Comprimento (m)')
+    ax.set_ylabel('Largura (m)')
+    ax.set_title('Planta da Ponte')
+    ax.legend()
+    ax.grid(True)
+    ax.axis('equal')
+
+    planta_ponte = fig
+
+def salvar_pdf():
+    global planta_ponte
+    if planta_ponte is not None:
+        # Abrir a caixa de diálogo para escolher o diretório
+        caminho = filedialog.askdirectory()
+        if caminho:
+            nome_arquivo = f'{caminho}/planta_ponte.pdf'
+            with PdfPages(nome_arquivo) as pdf:
+                pdf.savefig(planta_ponte)
+                messagebox.showinfo("PDF Salvo", f"PDF salvo com sucesso como {nome_arquivo}.")
+    else:
+        messagebox.showerror("Erro", "Não há imagem para salvar.")
+
+def limpar_tela():
+    global canvas
+    confirmar_limpeza = messagebox.askyesno("Limpar Tela", "Deseja limpar a tela?")
+    if confirmar_limpeza:
+        if canvas:
+            canvas.get_tk_widget().destroy()
+        entry_comprimento.delete(0, tk.END)
+        entry_largura.delete(0, tk.END)
+        entry_pista.delete(0, tk.END)
+        entry_calcada.delete(0, tk.END)
+
+def gerar():
+    try:
+        comprimento_ponte = float(entry_comprimento.get())
+        largura_ponte = float(entry_largura.get())
+        largura_pista = float(entry_pista.get())
+        largura_calcada = float(entry_calcada.get())
+
+        gerar_planta_ponte(comprimento_ponte, largura_ponte, largura_pista, largura_calcada)
+
+        global canvas
+        if planta_ponte is not None:
+            if canvas:
+                canvas.get_tk_widget().destroy()
+            canvas = FigureCanvasTkAgg(planta_ponte, master=root)
+            canvas.draw()
+            canvas.get_tk_widget().grid(row=5, columnspan=2, padx=10, pady=10)
+    except ValueError:
+        messagebox.showerror("Erro", "Por favor, insira valores numéricos válidos para as dimensões.")
+
+root = tk.Tk()
+root.title("LabDam-B - Gerador de Plantas de Ponte")
+
+tk.Label(root, text="Comprimento da Ponte (m):").grid(row=0, column=0, padx=10, pady=5)
+entry_comprimento = tk.Entry(root)
+entry_comprimento.grid(row=0, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Largura da Ponte (m):").grid(row=1, column=0, padx=10, pady=5)
+entry_largura = tk.Entry(root)
+entry_largura.grid(row=1, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Largura da Pista de Rolamento (m):").grid(row=2, column=0, padx=10, pady=5)
+entry_pista = tk.Entry(root)
+entry_pista.grid(row=2, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Largura de Cada Calçada (m):").grid(row=3, column=0, padx=10, pady=5)
+entry_calcada = tk.Entry(root)
+entry_calcada.grid(row=3, column=1, padx=10, pady=5)
+
+tk.Button(root, text="Gerar Planta", command=gerar).grid(row=4, columnspan=2, pady=10)
+tk.Button(root, text="Salvar PDF", command=salvar_pdf).grid(row=6, column=0, padx=10, pady=5)
+tk.Button(root, text="Limpar Tela", command=limpar_tela).grid(row=6, column=1, padx=10, pady=5)
+
+root.mainloop()
